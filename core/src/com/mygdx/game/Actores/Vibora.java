@@ -7,6 +7,7 @@ package com.mygdx.game.Actores;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -16,33 +17,40 @@ import com.mygdx.game.Matriz;
  *
  * @author Yeri
  */
-public class Vibora extends Actor {
+public class Vibora extends Actor implements InputProcessor{
 
     Texture vibora;
     Texture viboraCuerpo;
     Matriz matriz;
-    boolean vivo;
-    int x[];
-    int y[];
-    int partesDelCuerpo = 6;
+    public int valorAnteriorX, valorAnteriorY;
+    boolean vivo, movio;
     int manzanasComidas;
-    static final int DELAY = 75;
-    char direccion = 'R';
+    int delay = 75;
+    char direccion = 'D';
     long tiempoAnterior;
     long tiempoActual;
 
-    public Vibora(Texture vibora, Texture viboraCuerpo, Matriz matriz) {
+    public Vibora(Texture vibora, Matriz matriz) {
         this.matriz = matriz;
         this.vibora = vibora;
-        this.viboraCuerpo = viboraCuerpo;
         this.vivo = true;
+        this.movio = false;
         setSize(this.matriz.getTamanoUnidad(), this.matriz.getTamanoUnidad());
-        this.x = new int[this.matriz.getcantidadDeUnidades()];
-        this.y = new int[this.matriz.getcantidadDeUnidades()];
         tiempoAnterior = System.currentTimeMillis();
         tiempoActual = System.currentTimeMillis();
+        manzanasComidas = 0;
+        Gdx.input.setInputProcessor(this);
     }
-
+    
+    public void setDelay(int delay){
+        this.delay = delay;
+    }
+    public int getManzanasComidas(){
+        return this.manzanasComidas;
+    }
+    public void comioUnaManzana(){
+        this.manzanasComidas++;
+    }
     public boolean isVivo() {
         return vivo;
     }
@@ -51,100 +59,106 @@ public class Vibora extends Actor {
         this.vivo = vivo;
     }
 
-    public int getBodyParts() {
-        return partesDelCuerpo;
+    public boolean isMovio(){
+        return movio;
     }
-
-    public void setBodyParts(int partesDelCuerpo) {
-        this.partesDelCuerpo = partesDelCuerpo;
+    
+    public void setMovio(boolean movio){
+        this.movio = movio;
     }
-
-    public int getCabezaX() {
-        return x[0];
-    }
-
-    public int getCabezaY() {
-        return y[0];
-    }
-
-    public int getCuerpoX(int posicion) {
-        return x[posicion];
-    }
-
-    public int getCuerpoY(int posicion) {
-        return y[posicion];
-    }
-
-    @Override
-    public void setPosition(float x, float y) {
-        this.x[0] = (int) x;
-        this.y[0] = (int) y;
-        for (int i = 1; i < this.getBodyParts(); i++) {
-            this.x[i] = this.x[i - 1] - matriz.getTamanoUnidad();
-            this.y[i] = this.y[i - 1];
-        }
-    }
-
     @Override
     public void act(float delta) {
-
         tiempoActual = System.currentTimeMillis();
-        if (tiempoActual - tiempoAnterior >= DELAY && this.isVivo()) {
-            for (int i = partesDelCuerpo; i > 0; i--) {
-                x[i] = x[i - 1];
-                y[i] = y[i - 1];
-            }
+        if (tiempoActual - tiempoAnterior >= delay && this.isVivo()) {
+            this.movio = true;
+            this.valorAnteriorX = matriz.getposicionCeldaEnX((int) getX());
+            this.valorAnteriorY = matriz.getposicionCeldaEnY((int) getY());
+            matriz.mapa[this.valorAnteriorY][this.valorAnteriorX] = 4;
             switch (direccion) {
                 case 'U':
-                    y[0] = y[0] + matriz.getTamanoUnidad();
+                    setY(getY() + matriz.getTamanoUnidad());
                     break;
                 case 'D':
-                    y[0] = y[0] - matriz.getTamanoUnidad();
+                    setY(getY() - matriz.getTamanoUnidad());
                     break;
                 case 'L':
-                    x[0] = x[0] - matriz.getTamanoUnidad();
+                    setX(getX() - matriz.getTamanoUnidad());
                     break;
                 case 'R':
-                    x[0] = x[0] + matriz.getTamanoUnidad();
+                    setX(getX() + matriz.getTamanoUnidad());
                     break;
             }
             tiempoAnterior = tiempoActual;
-            setX(x[0]);
-            setY(y[0]);
         }
-        moverVibora();
-
     }
 
     @Override
     public void draw(Batch batch, float parentAlpha) {
-        for (int i = 0; i < partesDelCuerpo; i++) {
-            if (i == 0) {
-                batch.draw(vibora, x[i], y[i], matriz.getTamanoUnidad(), matriz.getTamanoUnidad());
-            } else {
-                batch.draw(viboraCuerpo, x[i], y[i], matriz.getTamanoUnidad(), matriz.getTamanoUnidad());
-            }
+        if (this.isVivo()) {
+
+            batch.draw(vibora, getX(), getY(), this.matriz.getTamanoUnidad(), this.matriz.getTamanoUnidad());
         }
+
     }
 
-    public void moverVibora() {
-        if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
-            if (direccion != 'D') {
-                direccion = 'U';
-            }
-        } else if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
-            if (direccion != 'U') {
-                direccion = 'D';
-            }
-        } else if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-            if (direccion != 'R') {
-                direccion = 'L';
-            }
-        } else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-            if (direccion != 'L') {
-                direccion = 'R';
-            }
+    @Override
+    public boolean keyDown(int keycode) {
+        switch (keycode) {
+            case Input.Keys.UP:
+                if (direccion != 'D') {
+                    direccion = 'U';
+                }   break;
+            case Input.Keys.DOWN:
+                if (direccion != 'U') {
+                    direccion = 'D';
+                }   break;
+            case Input.Keys.LEFT:
+                if (direccion != 'R') {
+                    direccion = 'L';
+                }   break;
+            case Input.Keys.RIGHT:
+                if (direccion != 'L') {
+                    direccion = 'R';
+                }   break;
+            default:
+                break;
         }
+        return true;
+    }
+
+    @Override
+    public boolean keyUp(int keycode) {
+        return false;
+    }
+
+    @Override
+    public boolean keyTyped(char character) {
+        return false;
+    }
+
+    @Override
+    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override
+    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override
+    public boolean touchDragged(int screenX, int screenY, int pointer) {
+        return false;
+    }
+
+    @Override
+    public boolean mouseMoved(int screenX, int screenY) {
+        return false;
+    }
+
+    @Override
+    public boolean scrolled(float amountX, float amountY) {
+       return false;
     }
 
 }

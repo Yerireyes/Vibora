@@ -6,9 +6,12 @@
 package com.mygdx.game;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.mygdx.game.Actores.Cola;
 import com.mygdx.game.Actores.Comida;
-import com.mygdx.game.Actores.Obstaculo;
 import com.mygdx.game.Actores.Vibora;
+import java.util.Random;
 
 /**
  *
@@ -16,88 +19,100 @@ import com.mygdx.game.Actores.Vibora;
  */
 public class Colisiones {
 
-    public static void AllColisions(Objetos objetos) {
-        Colisiones.Comio(objetos.vibora, objetos.comida);
-        Colisiones.ColisionCuerpo(objetos.vibora);
-        Colisiones.ColisionObstaculo(objetos.vibora, objetos.obstaculo);
-        Colisiones.ColisionObstaculo(objetos.vibora, objetos.obstaculo2);
-        Colisiones.ColisionObstaculo(objetos.vibora, objetos.obstaculo3);
-        Colisiones.ColisionObstaculo(objetos.vibora, objetos.obstaculo4);
-        Colisiones.ColisionComidaObjeto(objetos.obstaculo, objetos.comida);
-        Colisiones.ColisionComidaObjeto(objetos.obstaculo2, objetos.comida);
-        Colisiones.ColisionComidaObjeto(objetos.obstaculo3, objetos.comida);
-        Colisiones.ColisionComidaObjeto(objetos.obstaculo4, objetos.comida);
-        Colisiones.ColisionPared(objetos.vibora);
-        Colisiones.ColisionComidaVibora(objetos.vibora, objetos.comida);
+    public static void AllColisions(Objetos objetos, Stage stage, Sound eatSound, Sound dieSound) {
+        if (!objetos.vibora.isMovio()) {
+            return;
+        }
+        Colisiones.ColisionPared(objetos.vibora, objetos.matriz);
+        Colisiones.Comio(objetos.vibora, objetos.comida, objetos.cola, eatSound, objetos.matriz);
+        Colisiones.Cola(objetos.vibora, objetos.cola, objetos.matriz);
+        Colisiones.ColisionObstaculos(objetos.vibora, objetos.matriz);
+        if (objetos.vibora.isVivo()) {
+            objetos.matriz.mapa[objetos.matriz.getposicionCeldaEnY((int) objetos.vibora.getY())]
+                    [objetos.matriz.getposicionCeldaEnX((int) objetos.vibora.getX())] = 3;
+        }else{
+            dieSound.play();
+        }
+        Colisiones.CambiarNivel(objetos, stage);
     }
 
-    public static void Comio(Vibora vibora, Comida comida) {
-        if (vibora.isVivo()
-                && (vibora.getX() + vibora.getWidth() > comida.getX() && vibora.getX() < comida.getX() + comida.getWidth()
-                && vibora.getY() + vibora.getHeight() > comida.getY() && vibora.getY() < comida.getY() + comida.getHeight())) {
-            comida.generarComida();
-            vibora.setBodyParts(vibora.getBodyParts() + 1);
+    public static void Cola(Vibora vibora, Cola cola, Matriz matriz) {
+        vibora.setMovio(false);
+        cola.actualizar(matriz.posicionCeldaEnX(vibora.valorAnteriorX), matriz.posicionCeldaEnY(vibora.valorAnteriorY));
+    }
+
+    public static void Comio(Vibora vibora, Comida comida, Cola cola, Sound eatSound, Matriz matriz) {
+        if (!vibora.isVivo()) {
+            return;
+        }
+        int posicionX = matriz.getposicionCeldaEnX((int) vibora.getX());
+        int posicionY = matriz.getposicionCeldaEnY((int) vibora.getY());
+        if (matriz.mapa[posicionY][posicionX] == 2) {
+            matriz.mapa[posicionY][posicionX] = 0;
+            Random random = new Random();
+            int randomX = random.nextInt((int) (matriz.getPantallaAncho() / matriz.getTamanoUnidad())) * matriz.getTamanoUnidad();
+            int randomY = random.nextInt((int) (matriz.getPantallaAlto() / matriz.getTamanoUnidad())) * matriz.getTamanoUnidad();
+            while (matriz.mapa[matriz.getposicionCeldaEnY(randomY)][matriz.getposicionCeldaEnX(randomX)] != 0) {
+                randomX = random.nextInt((int) (matriz.getPantallaAncho() / matriz.getTamanoUnidad())) * matriz.getTamanoUnidad();
+                randomY = random.nextInt((int) (matriz.getPantallaAlto() / matriz.getTamanoUnidad())) * matriz.getTamanoUnidad();
+            }
+            eatSound.play();
+            cola.aumentarCola();
+            vibora.comioUnaManzana();
+            comida.setX(randomX);
+            comida.setY(randomY);
+            matriz.mapa[matriz.getposicionCeldaEnY(randomY)][matriz.getposicionCeldaEnX(randomX)] = 2;
         }
     }
 
-    public static void ColisionCuerpo(Vibora vibora) {
-        if (vibora.isVivo()) {
-            for (int i = 1; i < vibora.getBodyParts(); i++) {
-                if (vibora.getCabezaX() == vibora.getCuerpoX(i) && vibora.getCabezaY() == vibora.getCuerpoY(i)) {
-                    vibora.setVivo(false);
+    public static void ColisionObstaculos(Vibora vibora, Matriz matriz) {
+        if (!vibora.isVivo()) {
+            return;
+        }
+        int posicionX = matriz.getposicionCeldaEnX((int) vibora.getX());
+        int posicionY = matriz.getposicionCeldaEnY((int) vibora.getY());
+        if (matriz.mapa[posicionY][posicionX] == 1 ||
+                matriz.mapa[posicionY][posicionX] == 4) {
+            vibora.setVivo(false);
+        }
+    }
+
+    public static void ColisionPared(Vibora vibora, Matriz matriz) {
+        int posicionX = (int) vibora.getX();
+        int posicionY = (int) vibora.getY();
+        if (posicionX < 0) {
+            vibora.setVivo(false);
+        } else if (posicionX >= Gdx.graphics.getWidth()) {
+            vibora.setVivo(false);
+        } else if (posicionY < 0) {
+            vibora.setVivo(false);
+        } else if (posicionY >= Gdx.graphics.getHeight()) {
+            vibora.setVivo(false);
+        } 
+        
+    }
+    
+    public static void CambiarNivel(Objetos objetos, Stage stage){
+        byte nivel = objetos.getNivel();
+        switch(nivel){
+            case 1:
+                if (objetos.vibora.getManzanasComidas() == 3) {
+                    objetos.sisguienteNivel();
+                    objetos.cargarNivel2();
+                    stage.clear();
+                    objetos.addActor(stage);
+                    objetos.vibora.setDelay(70);
                 }
-            }
-        }
-    }
-
-    public static void ColisionObstaculo(Vibora vibora, Obstaculo obstaculo) {
-        if (vibora.isVivo()
-                && (vibora.getX() + vibora.getWidth() > obstaculo.getX() && vibora.getX() < obstaculo.getX() + obstaculo.getWidth()
-                && vibora.getY() + vibora.getHeight() > obstaculo.getY() && vibora.getY() < obstaculo.getY() + obstaculo.getHeight())) {
-            vibora.setVivo(false);
-        }
-    }
-
-    public static void ColisionPared(Vibora vibora) {
-        if (vibora.getCabezaX() < 0) {
-            vibora.setVivo(false);
-        } else if (vibora.getCabezaX() >= Gdx.graphics.getWidth()) {
-            vibora.setVivo(false);
-        } else if (vibora.getCabezaY() < 0) {
-            vibora.setVivo(false);
-        } else if (vibora.getCabezaY() >= Gdx.graphics.getHeight()) {
-            vibora.setVivo(false);
-        }
-    }
-
-    public static void ColisionComidaVibora(Vibora vibora, Comida comida) {
-        for (int i = 0; i < vibora.getBodyParts(); i++) {
-            if (vibora.getCuerpoX(i) + vibora.getWidth() > comida.getX() && vibora.getCuerpoX(i) < comida.getX() + comida.getWidth()
-                    && vibora.getCuerpoY(i) + vibora.getHeight() > comida.getY() && vibora.getCuerpoY(i) < comida.getY() + comida.getHeight()) {
-                comida.setComidaBienGenerada(false);
-            }
-        }
-        while (!comida.isComidaBienGenerada()) {
-            comida.generarComida();
-            for (int i = 0; i < vibora.getBodyParts(); i++) {
-                if (!(vibora.getCuerpoX(i) + vibora.getWidth() > comida.getX() && vibora.getCuerpoX(i) < comida.getX() + comida.getWidth()
-                        && vibora.getCuerpoY(i) + vibora.getHeight() > comida.getY() && vibora.getCuerpoY(i) < comida.getY() + comida.getHeight())) {
-                    comida.setComidaBienGenerada(true);
+                break;
+            case 2:
+                if (objetos.vibora.getManzanasComidas() == 5) {
+                    objetos.sisguienteNivel();
+                    objetos.cargarNivel3();
+                    stage.clear();
+                    objetos.addActor(stage);
+                    objetos.vibora.setDelay(60);
                 }
-            }
-        }
-    }
-
-    public static void ColisionComidaObjeto(Obstaculo obstaculo, Comida comida) {
-        if ((obstaculo.getX() + obstaculo.getWidth() > comida.getX() && obstaculo.getX() < comida.getX() + comida.getWidth()
-                && obstaculo.getY() + obstaculo.getHeight() > comida.getY() && obstaculo.getY() < comida.getY() + comida.getHeight())) {
-            comida.setComidaBienGenerada(false);
-        }
-        while (!comida.isComidaBienGenerada()) {
-            if (!(obstaculo.getX() + obstaculo.getWidth() > comida.getX() && obstaculo.getX() < comida.getX() + comida.getWidth()
-                    && obstaculo.getY() + obstaculo.getHeight() > comida.getY() && obstaculo.getY() < comida.getY() + comida.getHeight())) {
-                comida.setComidaBienGenerada(true);
-            }
+                break;
         }
     }
 

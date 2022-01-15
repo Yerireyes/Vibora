@@ -18,42 +18,18 @@ import java.util.Random;
 public class Comida extends Actor {
 
     private final TextureRegion comida;
-    Random random;
     Matriz matriz;
-    int randomX;
-    int randomY;
-    public boolean comidaBienGenerada;
+
 
     public Comida(TextureRegion comida, Matriz matriz) {
         this.matriz = matriz;
         this.comida = comida;
-        comidaBienGenerada = true;
         setSize(this.matriz.getTamanoUnidad(), this.matriz.getTamanoUnidad());
-        random = new Random();
-    }
-
-    public boolean isComidaBienGenerada() {
-        return comidaBienGenerada;
-    }
-
-    public void setComidaBienGenerada(boolean comidaBienGenerada) {
-        this.comidaBienGenerada = comidaBienGenerada;
     }
 
     @Override
     public void draw(Batch batch, float parentAlpha) {
         batch.draw(comida, getX(), getY(), this.matriz.getTamanoUnidad(), this.matriz.getTamanoUnidad());
-    }
-
-    @Override
-    public void act(float delta) {
-    }
-
-    public void generarComida() {
-        randomX = random.nextInt((int) (this.matriz.getPantallaAncho() / this.matriz.getTamanoUnidad())) * this.matriz.getTamanoUnidad();
-        randomY = random.nextInt((int) (this.matriz.getPantallaAlto() / this.matriz.getTamanoUnidad())) * this.matriz.getTamanoUnidad();
-        setX(randomX);
-        setY(randomY);
     }
 
 }
